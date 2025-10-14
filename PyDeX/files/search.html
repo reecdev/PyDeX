@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>PyDeX</title>
+    </head>
+    <body>
+        <div id="top">
+            <a href="index.html"><img src="logo.png" width="150px"></a>
+            <form action="/search">
+                <input type="text" placeholder="search the index" id="search" name="query" value="%d">
+            </form>
+        </div>
+        <hr></hr>
+        <div id="content">
+            %s
+        </div>
+    </body>
+    <style>
+        #top{
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+        }
+        img{
+            margin-right: 15px;
+        }
+        input{
+            height: 30px;
+            font-size: 25px;
+            outline: none;
+        }
+        #content{
+            display: flex;
+            flex-direction: column;
+        }
+        .result{
+            display: flex;
+            flex-direction: column;
+            margin: 5px;
+        }
+        h2{
+            margin-bottom: 5px;
+        }
+        i{
+            color: gray;
+            font-size: 12px;
+        }
+        *{
+            font-family: sans-serif;
+        }
+    </style>
+</html>
