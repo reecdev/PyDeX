@@ -9,6 +9,9 @@
             <form action="/search">
                 <input type="text" placeholder="search the index" id="search" name="query" value="%d">
             </form>
+            <div id="right">
+                <b><i>%f pages indexed</i></b>
+            </div>
         </div>
         <hr></hr>
         <div id="content">
@@ -20,6 +23,9 @@
             display: flex;
             flex-direction: row;
             align-items: center;
+        }
+        #right{
+            margin-left: auto;
         }
         img{
             margin-right: 15px;
@@ -38,7 +44,7 @@
             flex-direction: column;
             margin: 5px;
         }
-        h2{
+        h3{
             margin-bottom: 5px;
         }
         i{

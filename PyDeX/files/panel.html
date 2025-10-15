@@ -1,0 +1,108 @@
+<html>
+    <head>
+        <title>PyDeX</title>
+    </head>
+    <body>
+        <div id="top-panel">
+            <a href="/"><img src="logo.png" width="150px"></a>
+            <button class="button" onclick="window.location.replace('/panel.html')">Control Panel</button>
+        </div>
+        <hr>
+        <form action="start-index" class="panel" target="_blank">
+            <h3>Start an index</h3>
+            <input type="text" name="start" placeholder="Start URL (must be a full URL)">
+            <input type="number" name="maxPages" placeholder="Amount of pages to index">
+            <input type="submit" id="submitbutton" value="Add to indexing quene">
+        </form>
+        <div class="panel">
+            <h3>Indexer status</h3>
+            <p>Running: <span id="running-status">Offline</span></p>
+            <p>Websites indexed: <span id="indexed-status">0</span></p>
+            <p>RPM: <span id="rpm-status">0</span></p>
+            <p>Runtime: <span id="runtime-status">0</span> seconds</p>
+        </div>
+        <script>
+            const $ = function(e){return document.querySelector(e)};
+            async function getStats(){
+                let response = await (await (await fetch("/apistats")).text()).split("\n");
+                $("#running-status").textContent = response[0];
+                $("#indexed-status").textContent = response[1];
+                $("#rpm-status").textContent = response[2];
+                $("#runtime-status").textContent = response[3];
+            }
+            function update(){
+                getStats();
+                setTimeout(update, 5000);
+            }
+            update();
+        </script>
+    </body>
+    <style>
+        #search{
+            position: fixed;
+            width: 75%;
+            left: 12.5%;
+            top: 50%;
+            height: 50px;
+            font-size: 40px;
+            color: black;
+            outline: none;
+        }
+        .panel{
+            display: flex;
+            flex-direction: column;
+            margin: 5px;
+            padding: 5px;
+            border: 1px solid gray;
+            border-radius: 5px;
+            width: 250px;
+        }
+        .panel *{
+            margin: 5px;
+        }
+        .panel input{
+            padding: 5px;
+            font-size: 15;
+            border-radius: 5px;
+            border: 1px solid gray;
+            outline: none;
+        }
+        #submitbutton{
+            border: 1px solid #0077FF;
+            color: black;
+            border-radius: 5px;
+            background: none;
+            padding: 5px;
+            font-size: 15px;
+            cursor: pointer;
+            transition: background-color 0.25s, color 0.25s;
+            cursor: pointer;
+        }
+        #submitbutton:hover{
+            background-color: #0077FF;
+            color: white;
+        }
+        #submitbutton:active{
+            background: none;
+            color: black;
+        }
+        .button{
+            cursor: pointer;
+            border: none;
+            background: none;
+            font-family: sans-serif;
+            font-size: 18;
+            border-bottom: 2px solid #0077FF;
+            border-radius: 2px;
+        }
+        #top-panel{
+            display: flex;
+            flex-direction: row;
+            justify-content: space-between;
+            align-items: center;
+        }
+        *{
+            font-family: sans-serif;
+        }
+    </style>
+</html>

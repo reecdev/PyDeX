@@ -12,12 +12,18 @@ def log(text):
     # print(str((round(time.perf_counter()-startTime)*1000)/1000)+" | "+text)
 indexedPages = 0
 maxIndexes = 0
+rpm = 0
+fastIndex = False
+running = False
 indexedUrls = []
 searchIndexKey = []
 pageRankScores = []
 searchIndex = {}
 def index(url):
+    global running
     global indexedPages
+    global rpm
+    running = True
     stime = time.perf_counter()
     page = requests.get(url, headers={"User-Agent": "Mozilla/5.0 (compatible; SurplusBot/1.0; +http://surplussoftworks.vercel.app)"}).text
     log("Fetched "+url+" in "+str((round(time.perf_counter()-stime)*1000)/1000)+"s")
@@ -40,14 +46,12 @@ def index(url):
                     for metaKey in metaKeywords:
                         metaKey = metaKey.strip()
     indexedUrls.append(url)
+    for key in metaTitle.split(" "):
+        if not key in metaKeywords:
+            metaKeywords.append(key.lower().strip())
     for key in metaDescription.split(" "):
         if not key in metaKeywords:
             metaKeywords.append(key.lower().strip())
-    pageContent = soup.findAll(text=True)
-    pageContent = (u" ".join(t.strip().lower() for t in pageContent))
-    for key in pageContent.split(" "):
-        if not key in metaKeywords:
-            metaKeywords.append(key)
     generatedData = [metaTitle, metaDescription, metaKeywords, url]
     if not generatedData in searchIndexKey:
         pageRankScores.append(0)
@@ -60,14 +64,16 @@ def index(url):
     log("Searching for links in parsed HTML...")
     indexedPages += 1
 
-    # Print Stats
+    # Print stats
     clear()
     elapsedTime = round((time.perf_counter()-startTime)*1000)/1000
     print("#### Status ####")
     print("Web pages indexed: "+str(indexedPages))
     print("Time elapsed: "+str(elapsedTime)+"s")
-    print("RPM: "+str(round((indexedPages/elapsedTime)*60)))
+    rpm = round((indexedPages/elapsedTime)*60)
+    print("RPM: "+str(rpm))
 
+    running = False
     links = soup.find_all("a", href=True)
     for link in links:
         if link.has_attr("href"):
@@ -83,9 +89,12 @@ def index(url):
                 if indexedPages < int(maxIndexes)+1 and not parsedLink in indexedUrls:
                     indexedPages += 1
                     try:
-                        t = threading.Thread(target=index(parsedLink))
-                        t.daemon = True
-                        t.start()
+                        if fastIndex == True:
+                            time.sleep(1)
+                            workerIndexingUrl = parsedLink
+                            threading.Thread(target=indexingWorker).start()
+                        else:
+                            index(parsedLink)
                     except:
                         log("Skipping this page because it has an issue I'm too lazy to fix ;-;")
                 else:
@@ -109,7 +118,6 @@ def search(query):
     results = []
     servedSites = []
     for site in resultSites:
-        print(site)
         key = searchIndexKey[site]
         if not key[3] in servedSites:
             results.append(key)
@@ -118,21 +126,24 @@ def search(query):
     for result in results:
         output.append([result[0],result[1],result[3]])
     return output
+def indexingWorker():
+    startTime = time.perf_counter()
+    index(workerIndexingUrl)
 
-clear()
-print("## Welcome to PyDeX! ##")
-print("The quick setup menu will help you get PyDeX running in minutes.")
-print("")
-startUrl = input("What website shall we start indexing on? Make sure you type a full URL.\n> ")
-maxIndexes = input("How many web pages shall we index?\nYou'll be able to index ~60 web pages per minute on a standard internet connection.\n> ")
-clear()
-print("Warning: This can get you banned off of websites, as they'll think you're DDoSing them.\nMake sure you use a VPN or proxy that has given you permission.")
-input("Press Enter to continue.\n> ")
+# clear()
+# print("## Welcome to PyDeX! ##")
+# print("The quick setup menu will help you get PyDeX running in minutes.")
+# print("")
+# startUrl = input("What website shall we start indexing on? Make sure you type a full URL.\n> ")
+# maxIndexes = input("How many web pages shall we index?\nYou'll be able to index ~60 web pages per minute on a standard internet connection.\n> ")
+# clear()
+# print("Warning: This can get you banned off of websites, as they'll think you're DDoSing them.\nMake sure you use a VPN or proxy that has given you permission.")
+# input("Press Enter to continue.\n> ")
 
-startTime = time.perf_counter()
-index(startUrl)
-clear()
-print("Indexing has finished. The web interface will start in just a second...")
+# startTime = time.perf_counter()
+# index(startUrl)
+# clear()
+# print("Indexing has finished. The web interface will start in just a second...")
 
 app = Flask(__name__)
 FILES_DIR = os.path.join(os.path.dirname(__file__), 'files')
@@ -142,26 +153,32 @@ def main():
     return send_from_directory(FILES_DIR, "index.html")
 @app.route('/<path:filename>', methods=['GET'])
 def serve_file(filename):
+    global maxIndexes
+    global startTime
+    global workerIndexingUrl
     if filename == "search":
         searchResponse = search(request.args.get("query"))
-        finalFile = open(FILES_DIR+"/search.html").read().replace('\n','').replace("%d",request.args.get("query"))
+        finalFile = open(FILES_DIR+"/search.html").read().replace('\n','').replace("%d",request.args.get("query")).replace("%f", str(indexedPages))
         searchResponseHTML = ""
         for element in searchResponse:
-            searchResponseHTML = searchResponseHTML + "<div class='result'><a href='"+element[2]+"'><h2>"+element[0]+"</h2></a><i>"+element[1]+"</i></div>"
+            searchResponseHTML = searchResponseHTML + "<div class='result'><a href='"+element[2]+"'><h3>"+element[0]+"</h3></a><i>"+element[1]+"</i></div>"
         return finalFile.replace("%s", searchResponseHTML)
     elif filename == "start-index":
-        if len(indexedUrls) < 1:
+        try:
             maxIndexes = int(request.args.get("maxPages"))
-            index(request.args.get("start"))
-        return "<html><head><title>PyDeX</title></head><body style='text-align: center;'><h1>Your request was submitted!</h1><p>The indexing has started. The server may temporarily slow down during indexing.</p><form action='index.html'><input type='submit' value='< Back' style='cursor: pointer'></form></body></html>"
+            startTime = time.perf_counter()
+            workerIndexingUrl = request.args.get("start")
+            threading.Thread(target=indexingWorker).start()
+            return "Success"
+        except:
+            return "Failed"
+    elif filename == "apistats":
+        return str(running)+"\n"+str(indexedPages)+"\n"+str(rpm)+"\n"+str(round(time.perf_counter() - startTime))
     else:
-        if len(indexedUrls) < 1:
-            return "<html><head><title>PyDeX</title></head><body style='text-align: center'><h1>No websites have been indexed!</h1><p>Start an index using the options below:</p><form action='/start-index' style='display: flex; flex-direction: column; width: 250px; justify-self: center;'><input type='text' name='start' placeholder='Source Url (must be a full Url)' style='margin: 5px;'><input type='text' name='maxPages' placeholder='Max pages (useful for big websites)' style='margin: 5px;'><input type='submit' style='margin: 5px; cursor: pointer;'></form></body></html>"
-        else:
-            try:
-                return send_from_directory(FILES_DIR, filename)
-            except FileNotFoundError:
-                abort(404)
+        try:
+            return send_from_directory(FILES_DIR, filename)
+        except FileNotFoundError:
+            abort(404)
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=80, threaded=False)
